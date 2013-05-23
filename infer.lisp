@@ -1,4 +1,3 @@
-
 ;;;; 式集合 Γ から φ が意味論的帰結であるかを判定 Γ |= φ
 ;;;; 判定にはタブロー法を使う
 ;;;; Γ |= φ ならば Γ ∪  {¬ φ} |= 
@@ -197,14 +196,6 @@
 				   (ltrl-lexprs (remove-if (lambda (x) (applyp (car x))) nrml-lexprs))
 				    ;; リテラル. もうこいつはいじれない
 				   (extb-lexprs (remove-if (lambda (x) (not (applyp (car x)))) nrml-lexprs)))
-					;; 展開可能式
-					;; debug のため
-					;;(debug-print 
-					;;	falq-lexprs 
-					;;	extq-lexprs 
-				    ;;	nrml-lexprs 
-					;;	ltrl-lexprs 
-					;;	extb-lexprs)
 					(cond 
 						((not (null extq-lexprs))
 							;; 存在量化をぶっ潰すそしてまた回す

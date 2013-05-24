@@ -15,13 +15,12 @@
 
 
 ;;; "abc" "def" -> "abcdef"
-;;; 文字列の連結。　ただの文字数かせぎ
 (defun str-app (&rest main) 
 	(reduce (lambda (x y) (concatenate 'string x y)) main :initial-value ""))
 
 
 ;;; "abcdefg," -> "abcdefg"
-;;; 最後の文字列を落とすだけ
+;;; 最後の文字列を落とす
 (defun str-cut (x) (subseq x 0 (1- (length x))))
 
 

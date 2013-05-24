@@ -161,15 +161,13 @@
 				(values (gensym "RID-FORALL-") t))
 			(t (values (car tmp) nil)))))
 
-(defun debug-print (a b c d e)
-	(format t "===========================================~%")
-	(format t "FORALL-QUANTS-LEXPRS: ~A~%" a)
-	(format t "EXIST-QUANTS-LEXPRS : ~A~%" b)
-	(format t "NONE-QUANTS-LEXPRS  : ~A~%" c)
-	(format t "LITERAL-LEXPRS      : ~A~%" d)
-	(format t "EXTENEDABLE-LEXPRS  : ~A~%" e)
-	(format t "===========================================~%~%")
-)
+(defun debug-print (lexprs usedsym)
+	(format t "LEXPRS-SIZE: ~A~%ALL-USED-SYM: ~A~%------------------------------------------~%" 
+		(length lexprs) usedsym)
+	(loop for lexpr in lexprs for cont from 1 upto (length lexprs)  do 
+		(format t "~A. ~%ORIGINAL: ~A~%STRING: ~A~%USED-SYM: ~A~%" 
+			cont lexpr (dump:lexpr->string (car lexpr)) (second lexpr)))
+	(format t "------------------------------------------~%~%"))
 
 
 ;;; lexprs を構成する式の要素
@@ -177,7 +175,8 @@
 ;;; 2. 存在量化な式
 ;;; 3. 展開可能式 or and
 ;;; 4. リテラル
-(defun contrap-main (lexprs usedsym)
+(defun contrap-main (lexprs usedsym &optional (trc nil))
+	(when trc (debug-print lexprs usedsym))
 	(cond
 		;; 自分の否定の形の式が含まれていたら矛盾
 		((closep lexprs) t)
@@ -197,14 +196,6 @@
 				   (ltrl-lexprs (remove-if (lambda (x) (applyp (car x))) nrml-lexprs))
 				    ;; リテラル. もうこいつはいじれない
 				   (extb-lexprs (remove-if (lambda (x) (not (applyp (car x)))) nrml-lexprs)))
-					;; 展開可能式
-					;; debug のため
-					;;(debug-print 
-					;;	falq-lexprs 
-					;;	extq-lexprs 
-				    ;;	nrml-lexprs 
-					;;	ltrl-lexprs 
-					;;	extb-lexprs)
 					(cond 
 						((not (null extq-lexprs))
 							;; 存在量化をぶっ潰すそしてまた回す
@@ -215,7 +206,7 @@
 									(append 
 										falq-lexprs 
 										rid-extq-lexprs
-										nrml-lexprs) (append syms usedsym))))
+										nrml-lexprs) (append syms usedsym) trc)))
 						((not (null extb-lexprs))
 							;; ここにきたなら 少なくとも extq-lexprs はnilのはず
 							;; なぜなら上で徹底的に取り除かれるから
@@ -233,12 +224,12 @@
 								   		((eq opr +AND+)
 											(contrap-main 
 												(append 
-													(split-sublexpr main) next-base) usedsym))
+													(split-sublexpr main) next-base) usedsym trc ))
 										((eq opr +OR+)
 											(every 
 												(lambda (x)
 													(contrap-main 
-														`(,@next-base ,x) usedsym))
+														`(,@next-base ,x) usedsym trc ))
 												(split-sublexpr main)))
 										(t "undefined operator: ~A" opr))))
 						((not (null falq-lexprs))
@@ -259,20 +250,27 @@
 											(update (list main bound))
 											(next `(,@other-falq-lexprs ,update ,unifed ,@nrml-lexprs)))
 										(if flag
-											(contrap-main next (cons sym usedsym))
-											(contrap-main next usedsym))))))
+											(contrap-main next (cons sym usedsym) trc )
+											(contrap-main next usedsym trc ))))))
 						(t (error "unexpected error: ~A~%" lexprs)))))))
 
 
 ;;; contrap-main へのインターフェース
-(defun contrap (lexprs)
+(defun contrap (lexprs &optional (trc nil))
 	(multiple-value-bind 
 		(clean-lexprs init-free-value) (util:preproc lexprs)
-		(contrap-main (forall-init  clean-lexprs) init-free-value)))
+		(contrap-main (forall-init  clean-lexprs) init-free-value trc)))
+
+
+;; lexpr は lexprs からの 意味論的帰結となるか
+(defun semantic-conseq (lexprs lexpr &optional (trc nil))
+	(contrap `(,@lexprs (,+NEG+ ,lexpr)) trc))
 
 (defun check-contrap (lexprs)
 	(format t "{")
 	(mapc (lambda (x) (dump:dump-lexpr x :template "~A , ")) lexprs)
 	(format t 
-		(if (contrap lexprs) "} is contradiction~%~%" "} is satisfiable~%~%")))
+		(if (contrap lexprs t) "} is contradiction~%~%" "} is satisfiable~%~%")))
+
+
 

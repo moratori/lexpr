@@ -3,7 +3,6 @@
 ;;;; 定義し読み込む. 
 
 
-;;;; 自分定義のユーティリティ系を読み込む
 
 
 (in-package :common-lisp-user)
@@ -54,7 +53,6 @@
 (defpackage :inference.lexpr 
 	(:use :common-lisp :const)
 	(:nicknames :infer)
-	(:export 
-		:contrap :check-contrap))
+	(:export :semantic-conseq))
 (in-package :infer)
 (load "./infer.lisp")

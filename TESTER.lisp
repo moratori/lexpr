@@ -13,6 +13,16 @@
 		'(mortal sokrates) ))
 
 
+;; Mike は Jhon が持っているものをなんでも欲しがる
+;; Jhon は PC を持っている Mike は PC を欲しがるか?
+(format t "~A~%"
+	(infer:semantic-conseq 
+		`(
+			(((,+FORALL+ x)) (,+IMPL+ (HAVE Jhon x) (WANTS Mike x)))
+			(HAVE Jhon PC))
+		'(WANTS Mike PC)))
+
+
 ;; { ∀ x∀ y.(∃ zH(y , z)) ⊃  H(x , y) , H(a , b)} |= ∀ z∀ w.H(z , w)  ? -> t
 ;; 論理学を作る の練習問題73から
 ;; {人は,人を憎む人を憎む , aさんはbさんを憎む} |= 全ての人は全ての人を憎む
@@ -23,7 +33,6 @@
 			(((,+FORALL+ x) (,+FORALL+ y)) (,+IMPL+ (((,+EXIST+ z)) (H y z))  (H x y)))
 			(H a b))
 		`(((,+FORALL+ z) (,+FORALL+ w))(H z w))))
-
 
 
 ;; 論理学を作るの練習問題32の(5)

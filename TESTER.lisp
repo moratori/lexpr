@@ -3,7 +3,6 @@
 (use-package :const)
 
 
-
 ;; ソクラテスは死ぬか?
 (format t "~A~%"
 	(infer:semantic-conseq

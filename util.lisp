@@ -16,7 +16,7 @@
 
 ;;; "abc" "def" -> "abcdef"
 (defun str-app (&rest main) 
-	(reduce (lambda (x y) (concatenate 'string x y)) main :initial-value ""))
+	(format nil "~{~A~}" main))
 
 
 ;;; "abcdefg," -> "abcdefg"

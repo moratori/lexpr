@@ -9,7 +9,7 @@
 		`(
 			(((,+FORALL+ x)) (,+IMPL+ (human x) (mortal x)))
 			(human sokrates))
-		'(mortal sokrates) ))
+		'(mortal sokrates)))
 
 
 ;; Mike は Jhon が持っているものをなんでも欲しがる
@@ -52,3 +52,15 @@
 
 
 
+#|
+;;; 矛盾してるはずだけどいつまでたってもおわらないよー
+(format t "~A~%"
+		(infer:semantic-conseq 
+		  `(
+			(((,+FORALL+ x) (,+FORALL+ y)) (,+IMPL+ (f x y) (m x)))
+			(((,+FORALL+ x) (,+FORALL+ y) (,+FORALL+ z)) 
+			 (,+IMPL+ (,+AND+ (f x y) (f z x)) (gf z y)))
+			(((,+FORALL+ x) (,+FORALL+ y)) 
+			 (,+IMPL+ (gf x y) (((,+EXIST+ z)) (,+AND+ (f x z) (f z y))))))
+		  	`(((,+FORALL+ x) (,+FORALL+ y)) (,+IMPL+ (gf x y) (m x))) t nil))
+|#

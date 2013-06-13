@@ -13,3 +13,5 @@ Usage
 inferパッケージのsemantic-conseqに前提となる式集合と  
   
 結論となる式を与えると、意味論的帰結となるかどうかを調べます
+
+{∀X.HUMAN(X)⊃MORTAL(X) , HUMAN(SOKRATES) , ¬MORTAL(SOKRATES) , } is contradiction

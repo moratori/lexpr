@@ -165,8 +165,8 @@
 	(format t "LEXPRS-SIZE: ~A~%ALL-USED-SYM: ~A~%------------------------------------------~%" 
 		(length lexprs) usedsym)
 	(loop for lexpr in lexprs for cont from 1 upto (length lexprs)  do 
-		(format t "~A. ~%ORIGINAL: ~A~%STRING: ~A~%USED-SYM: ~A~%" 
-			cont lexpr (dump:lexpr->string (car lexpr)) (second lexpr)))
+		(format t "~A. ~%STRING: ~A~%USED-SYM: ~A~%" 
+			cont (dump:lexpr->string (car lexpr)) (second lexpr)))
 	(format t "------------------------------------------~%~%"))
 
 
@@ -262,15 +262,21 @@
 		(contrap-main (forall-init  clean-lexprs) init-free-value trc)))
 
 
-;; lexpr は lexprs からの 意味論的帰結となるか
-(defun semantic-conseq (lexprs lexpr &optional (trc nil))
-	(contrap `(,@lexprs (,+NEG+ ,lexpr)) trc))
 
-(defun check-contrap (lexprs)
+(defun check-contrap (lexprs &optional (trc nil))
 	(format t "{")
 	(mapc (lambda (x) (dump:dump-lexpr x :template "~A , ")) lexprs)
-	(format t 
-		(if (contrap lexprs t) "} is contradiction~%~%" "} is satisfiable~%~%")))
+	(let ((ctr? (contrap lexprs trc)))
+       (format t 
+		(if ctr? "} is contradiction~%~%" "} is satisfiable~%~%")) ctr?))
 
+
+;; lexpr は lexprs からの 意味論的帰結となるか
+(defun semantic-conseq (lexprs lexpr &optional (trc nil) (ishow t))
+	(let ((target `(,@lexprs (,+NEG+ ,lexpr))))
+      (if ishow 
+        (check-contrap target trc)
+        (contrap target trc))))
+ 
 
 

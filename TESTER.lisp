@@ -3,6 +3,17 @@
 (use-package :const)
 
 
+
+(format t "~A~%" 
+        (infer:semantic-conseq 
+          `(
+            (((,+FORALL+ x) (,+FORALL+ y)) 
+             (,+IMPL+ (,+AND+ (love x y) (love y x)) (,+AND+ (happy x) (happy y))))
+            (love a b)
+            (love b a))
+            `(((,+EXIST+ x)) (happy x))))
+
+
 ;; ソクラテスは死ぬか?
 (format t "~A~%"
 	(infer:semantic-conseq
@@ -49,7 +60,6 @@
 			(((,+FORALL+ x)) (,+IMPL+ (,+NEG+ (J x)) (E x)))
 			(((,+FORALL+ x)) (,+IMPL+ (G x) (C x))))
 		 `(((,+FORALL+ x)) (,+IMPL+ (K x) (F x)))))
-
 
 
 #|

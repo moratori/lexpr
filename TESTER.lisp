@@ -3,7 +3,7 @@
 (use-package :const)
 
 
-
+#|
 (format t "~A~%" 
         (infer:semantic-conseq 
           `(
@@ -60,9 +60,9 @@
 			(((,+FORALL+ x)) (,+IMPL+ (,+NEG+ (J x)) (E x)))
 			(((,+FORALL+ x)) (,+IMPL+ (G x) (C x))))
 		 `(((,+FORALL+ x)) (,+IMPL+ (K x) (F x)))))
+|#
 
 
-#|
 ;;; 矛盾してるはずだけどいつまでたってもおわらないよー
 (format t "~A~%"
 		(infer:semantic-conseq 
@@ -73,4 +73,20 @@
 			(((,+FORALL+ x) (,+FORALL+ y)) 
 			 (,+IMPL+ (gf x y) (((,+EXIST+ z)) (,+AND+ (f x z) (f z y))))))
 		  	`(((,+FORALL+ x) (,+FORALL+ y)) (,+IMPL+ (gf x y) (m x))) t nil))
+
+; (p->q)->p->q
+
+#|
+(format t "~A~%" 
+        (infer:semantic-conseq nil `( ((,+FORALL+ x)) (,+IMPL+ (,+IMPL+ (,+IMPL+ (P x) (Q x)) (P x)) (P x)))))
+
+
+
+(format t "~A~%" 
+		(infer:semantic-conseq `((,+AND+ (,+OR+ (,+NEG+ (P a)) (Q a)) (,+OR+ (,+NEG+ (Q a)) (P a)))) `(,+EQL+ (P a) (Q a))))
+
+
+(format t "~A~%" 
+		(infer:semantic-conseq `( (,+EQL+ (P a) (Q a))) `(,+AND+ (,+OR+ (,+NEG+ (P a)) (Q a)) (,+OR+ (,+NEG+ (Q a)) (P a))) ))
+
 |#

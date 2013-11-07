@@ -176,7 +176,9 @@
 ;;; 3. 展開可能式 or and
 ;;; 4. リテラル
 (defun contrap-main (lexprs usedsym &optional (trc nil))
-	(when trc (debug-print lexprs usedsym))
+	(when trc
+	  (sleep 2)
+	  (debug-print lexprs usedsym))
 	(cond
 		;; 自分の否定の形の式が含まれていたら矛盾
 		((closep lexprs) t)

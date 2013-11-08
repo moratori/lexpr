@@ -53,6 +53,6 @@
 (defpackage :inference.lexpr 
 	(:use :common-lisp :const)
 	(:nicknames :infer)
-	(:export :semantic-conseq))
+	(:export :semantic-conseq :partof))
 (in-package :infer)
 (load "./infer.lisp")

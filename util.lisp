@@ -110,7 +110,7 @@
 ;;; 量化された論理式か否かを判定する
 (defun quantsexprp (lexpr)
 	;; (car lexpr) は量化部分か論理結合子になる
-	(quantsp (car lexpr)))
+	(or (quantsp (car lexpr))))
 
 
 ;;; forall -> exist

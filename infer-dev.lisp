@@ -69,7 +69,7 @@
 ;;; {P(x) , ¬ Q(x) } -> Boolean
 ;;; 全ての論理式が展開不可能かどうか 全ての式がリテラルであるか否か  
 (defun all-literalp (lexprs) 
-	(every (lambda (x) (not (applyp (car x)))) lexprs))
+	(every (lambda (x) (not (applyp (rid-init x)))) lexprs))
 
 
 ;;; 全称量化な式は単一化しても残るので
@@ -83,7 +83,8 @@
 
 ;;; forall-initでくっつけられたゴミみたいなnilをとりのぞくだけ
 (defun rid-init (lexprs) 
-	(mapcar (lambda (x) (car x)) lexprs))
+	(mapcar (lambda (x) (car x)) lexprs)
+	)
 
 
 ;;; {¬ P(x) P(x)} -> t
@@ -128,10 +129,6 @@
 			exist-sym)))
 
 
-;;; 優先的にforallの除去をすべき式を降順に並べる
-(defun sort-forall (forall-lexprs)
-	(sort forall-lexprs (lambda (x y) (< (length (second x)) (length (second y))))))
-
 
 ;;; 量化子のついていない式を集める
 (defun collect-nexpr (lexprs) 
@@ -161,42 +158,152 @@
 				(values (gensym "RID-FORALL-") t))
 			(t (values (car tmp) nil)))))
 
+;;; 優先的にforallの除去をすべき式を降順に並べる
+;;;
+;;; x <- lits の否定を式中に含んでいる式が最も優先度が高い
+;;; 
+;;; (,+NEG+ (P x y)) に対する
+;;; (,+AND+ (P x y) ...)
+;;;
+;;; (P x y) に対する
+;;; (,+OR+ (,+NEG+ (P x y)) ...)
+;;;
+;;;
+;;;
+;;;
+
+
+(defun faqexpr-sort (lexprs)
+  (sort lexprs 
+		(lambda (x y) 
+		  (< (length (second x)) (length (second y))))))
+
+
+
+
+
+(defun sort-forall (forall-lexprs lits)
+
+ (let ((pr (remove-if-not 
+	(lambda (x)
+	  (let ((target-falq x))
+		(some 
+		  (lambda (x)
+			;;; x の否定 neg-lit  が target-falqの部分論理式となってたらいい
+			  (partof (util:regular `(,+NEG+ ,(car x))) target-falq)) lits))) forall-lexprs)))
+   		
+
+		;; pr には リテラルの否定となる論理式が含まれている!
+		;; だからこいつの中の何れかを優先して使うべきなんだけど ... 
+
+		(append 
+		  (faqexpr-sort pr)
+		  (faqexpr-sort (set-difference forall-lexprs pr))))
+
+ 	;;; 上の処理やると余計にダメになるので
+	(faqexpr-sort 
+	  forall-lexprs))
+
+
+
+(defun andorp (s) 
+  (or (eq s +AND+) (eq s +OR+)))
+
+
+;; (F X Y)
+;; (F a b) がきたら?
+
+
+
+;;; リテラルの否定を含んでいるような式を使うために
+(defun partof (lit qexpr)
+
+
+  ;;; EXPR: ( O (O (N (F X Y)) (N (F Z X))) (GF Z Y))
+  ;;; LIT : (F X Y) -> nil
+  ;;; LIT : (N (F a b)) -> t
+
+  ;;; EXPR: (O (O (N (F X Y)) (F X Y)) (A (P x) (OR (N (G Y))  (Q x))))
+  ;;; LIT : (N (G a)) -> t
+
+  ;;; EXPR: (O (N (GF x y)) ...)
+  ;;; LIT : (N (GF a b))
+
+
+	(labels 
+	  ((main (body lit)
+
+		(cond
+		  ((null body) 
+		   nil)
+
+		  ((symbolp (car body))
+		   (if (andorp (car body))
+			 (main (cdr body) lit)
+			 (if (eq (car lit) (car body))
+				 (if (eq (car lit) +NEG+)
+				 	(main (second body) lit) t)
+				 nil)))
+
+		  ((util:quantsexprp (car body)) 
+		   (main (second (car body)) lit)) 
+
+		  ((andorp (caar body))
+		   (or (main (car body) lit) 
+			   (main (cdr body) lit)))
+
+		  ((eq (caar body) (car lit))
+		   (if (eq +NEG+ (car lit)) 
+			 (main (second (car body)) (second lit)) 
+			 t))
+		  (t 
+			(main (cdr body) lit))))) 
+	  (main (second (car qexpr)) lit)))
+
+
+
+(defun split-type (lexprs)
+	
+	(let* ((nrml-lexprs (collect-nexpr lexprs))
+		   (ltrl-lexprs (remove-if (lambda (x) (applyp (car x))) nrml-lexprs)))
+	  	(values 
+		  (collect-exist lexprs +EXIST+)
+		  (collect-nexpr lexprs)
+		  (remove-if (lambda (x) (applyp (car x))) nrml-lexprs)
+		  (remove-if (lambda (x) (not (applyp (car x)))) nrml-lexprs)
+		  (sort-forall (collect-exist lexprs +FORALL+) ltrl-lexprs))))
+
+
 (defun debug-print (lexprs usedsym)
 	(format t "LEXPRS-SIZE: ~A~%ALL-USED-SYM: ~A~%------------------------------------------~%" 
 		(length lexprs) usedsym)
-	(loop for lexpr in lexprs for cont from 1 upto (length lexprs)  do 
-		(format t "~A. ~%STRING: ~A~%USED-SYM: ~A~%" 
-			cont (dump:lexpr->string (car lexpr)) (second lexpr)))
-	(format t "------------------------------------------~%~%"))
+	(mapc (lambda (x) (dump:dump-lexpr (car x))) lexprs)
+	(format t "------------------------------------------------------------------")
+	)
 
 
-;;; lexprs を構成する式の要素
-;;; 1. 全称量化な式
-;;; 2. 存在量化な式
-;;; 3. 展開可能式 or and
-;;; 4. リテラル
 (defun contrap-main (lexprs usedsym &optional (trc nil))
 	(when trc
-	  (debug-print lexprs usedsym))
+	  (debug-print lexprs usedsym)
+	  )
 	(cond
 		;; 自分の否定の形の式が含まれていたら矛盾
-		((closep lexprs) t)
+		((closep lexprs)  t)
 		;; すべてがリテラルで上の条件に合致しない、つまり
 		;; 全ての式が自分の否定の形を含まないなら
 		;; これ以上つくす手段はないので矛盾していない
-		((all-literalp lexprs) nil)
+		((all-literalp lexprs)  nil)
 		(t
-			;; ここのlet でlexprs を
+			;; ここのmultiple-value-bind でlexprs を
 			;; 構成する式を4種類(5)に分ける
-			(let* ((falq-lexprs (sort-forall (collect-exist lexprs +FORALL+)))
-					;; 全称量化な式	
-				   (extq-lexprs (collect-exist lexprs +EXIST+))
+			(multiple-value-bind 
+				  (extq-lexprs nrml-lexprs ltrl-lexprs extb-lexprs falq-lexprs) (split-type lexprs)
 				    ;; 存在量化な式
-				   (nrml-lexprs (collect-nexpr lexprs))
 				    ;; リテラルと展開可能式をあわせたやつ
-				   (ltrl-lexprs (remove-if (lambda (x) (applyp (car x))) nrml-lexprs))
 				    ;; リテラル. もうこいつはいじれない
-				   (extb-lexprs (remove-if (lambda (x) (not (applyp (car x)))) nrml-lexprs)))
+				    ;; 展開可能式
+					;; 全称量化な式	
+
 					(cond 
 						((not (null extq-lexprs))
 							;; 存在量化をぶっ潰すそしてまた回す
@@ -208,6 +315,7 @@
 										falq-lexprs 
 										rid-extq-lexprs
 										nrml-lexprs) (append syms usedsym) trc)))
+
 						((not (null extb-lexprs))
 							;; ここにきたなら 少なくとも extq-lexprs はnilのはず
 							;; なぜなら上で徹底的に取り除かれるから
@@ -245,11 +353,16 @@
 									;; used
 									(other-falq-lexprs (cdr falq-lexprs)))
 									;; その他の全称量化単一化可能式
+									;(format t "~%SELECTED: ")
+									;(dump:dump-lexpr (car target) :template "~A")
+
 								(multiple-value-bind (sym flag) (select-symbol falq-usedsym usedsym)
 									(let*  ((bound  (cons sym falq-usedsym))
 										   	(unifed (list (unification main sym) nil))
 											(update (list main bound))
 											(next `(,@other-falq-lexprs ,update ,unifed ,@nrml-lexprs)))
+									  	;(format t " ==> ")
+									  	;(dump:dump-lexpr (car unifed) :template "~A~%")	
 										(if flag
 											(contrap-main next (cons sym usedsym) trc )
 											(contrap-main next usedsym trc ))))))

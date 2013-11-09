@@ -177,7 +177,7 @@
 ;;; 4. リテラル
 (defun contrap-main (lexprs usedsym &optional (trc nil))
 	(when trc
-	  (debug-print lexprs usedsym))
+	  (debug-print lexprs usedsym) (sleep 5))
 	(cond
 		;; 自分の否定の形の式が含まれていたら矛盾
 		((closep lexprs) t)

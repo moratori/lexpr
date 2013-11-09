@@ -78,11 +78,11 @@
 
 
 
-
 #|
 ;;; 矛盾してるはずだけどいつまでたってもおわらないよーな例
 ;;; この手の例もうまく行くように頑張っては見たけどどうもうまくいかなかった
 ;;; 方針としてはリテラルの否定を含む式を優先するやり方
+(format t "DANGER START~%")
 (format t "~A~%"
 		(infer:semantic-conseq 
 		  `(
@@ -91,7 +91,7 @@
 			; (,+IMPL+ (,+AND+ (f x y) (f z x)) (gf z y)))
 			(((,+FORALL+ x) (,+FORALL+ y)) 
 			 (,+IMPL+ (gf x y) (((,+EXIST+ z)) (,+AND+ (f x z) (f z y))))))
-		  	`(((,+FORALL+ x) (,+FORALL+ y)) (,+IMPL+ (gf x y) (m x))) t nil))
-|#
+		  	`(((,+FORALL+ x) (,+FORALL+ y)) (,+IMPL+ (gf x y) (m x))) t))
 
+|#
 

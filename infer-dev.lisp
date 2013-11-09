@@ -120,7 +120,7 @@
 (defun uni-exist (e-lexprs)
 	(let ((exist-sym 
 			(loop for x from 0 upto (1- (length e-lexprs)) 
-				collect (gensym "RID-EXIST-"))))
+				collect (gensym "RE-"))))
 		(values 
 			(map 'list 
 				(lambda (expr sym) 
@@ -173,8 +173,28 @@
 ;;;
 
 
+(defmacro filter (var pred lst)
+  `(remove-if-not 
+	 (lambda (,var) ,pred) ,lst))
+
+(defmacro let1 (var expr &rest body)
+  `(let ((,var ,expr)) ,@body))
+
+
+
+;;; 標準のソートは破壊的なので
+(defun psort (lst &optional (cmp #'<))
+  (if (null lst) nil
+	(let1 pivot (car lst)
+		 (append 
+		   (psort 
+			  (filter x (funcall (complement cmp) pivot x) (cdr lst)) cmp)
+		   (list pivot)
+		   (psort 
+			 (filter x (funcall cmp pivot x) (cdr lst)) cmp)))))
+
 (defun faqexpr-sort (lexprs)
-  (sort lexprs 
+  (psort lexprs 
 		(lambda (x y) 
 		  (< (length (second x)) (length (second y))))))
 
@@ -196,13 +216,22 @@
 		;; pr には リテラルの否定となる論理式が含まれている!
 		;; だからこいつの中の何れかを優先して使うべきなんだけど ... 
 
-		(append 
-		  (faqexpr-sort pr)
-		  (faqexpr-sort (set-difference forall-lexprs pr))))
+		(if (some (lambda (x) (null (second x))) pr)
+			(append 
+		  		(faqexpr-sort pr)
+		  		(faqexpr-sort (set-difference forall-lexprs pr)))
+			(faqexpr-sort forall-lexprs)
+		  )
+	
+		
+		
+		)
 
  	;;; 上の処理やると余計にダメになるので
-	(faqexpr-sort 
-	  forall-lexprs))
+	;(faqexpr-sort 
+	 ; forall-lexprs)
+	
+	)
 
 
 
@@ -278,13 +307,14 @@
 	(format t "LEXPRS-SIZE: ~A~%ALL-USED-SYM: ~A~%------------------------------------------~%" 
 		(length lexprs) usedsym)
 	(mapc (lambda (x) (dump:dump-lexpr (car x))) lexprs)
-	(format t "------------------------------------------------------------------")
+	(format t "--------------------------------------------------~%~%")
 	)
 
 
 (defun contrap-main (lexprs usedsym &optional (trc nil))
 	(when trc
 	  (debug-print lexprs usedsym)
+	  (sleep 5)
 	  )
 	(cond
 		;; 自分の否定の形の式が含まれていたら矛盾

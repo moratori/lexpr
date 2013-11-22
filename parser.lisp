@@ -24,9 +24,9 @@
 
 	<VAR>        ::= <SYMBOL>
 	<PRED-SYM>   ::= <SYMBOL>	
-	<OPERATOR>   ::= →  | ∧  | ∨  | ¬  | ⇔
+	<OPERATOR>   ::= -> | & | V | ~ | <->
 	
-	<QUANTIFIER> ::= ∀  | ∃ 
+	<QUANTIFIER> ::= A | E
 	<QUANTS>     ::= <QUANTIFIER> <VAR>
 	<QUANTS-PART>::= <QUANTS>+ "."
 
@@ -35,5 +35,7 @@
 		<ATOM> | "(" <EXPR> <OPERATOR> <EXPR> ")" | <QUANTS-PART> "(" <EXPR> ")"
 
 |#
+
+
 
 

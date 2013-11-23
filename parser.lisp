@@ -49,10 +49,14 @@
 ;;;	AxAy.P(x,y)
 
 
+(load "./const.lisp")
 
 ;;; 文字列の演算子の定義
 (defconstant +OPERATOR+ 
 			 '(#\> #\& #\V #\~ #\-))
+
+(defconstant +QUANTS+ 
+			 '(#\A #\E))
 
 (defconstant +SC+ #\()
 (defconstant +EC+ #\))
@@ -76,6 +80,8 @@
 
 (defun snull (str) 
   (string= str ""))
+
+
 
 
 
@@ -127,15 +133,31 @@
 (defun opr (c)
   (member c +OPERATOR+ :test #'char=))
 
+(defun qnt (c) 
+  (member c +QUANTS+ :test #'char=))
+
 
 ;; (P(x) & Q(y)) V R(x)
 (defun token% (str &optional (sc #\() (ec #\)))
   (labels 
 	((main (str result acc)
+		   (print str)
 		(if (snull str) result
 			(let* ((head (char str 0)) 
 				   (heads (string head)))
 	  			(cond
+				  ((qnt head)
+				   ;; ドットで区切られてるので
+				   ;; sokomade syutoku
+				   (if (not (zerop acc))
+					 (main (scdr str)
+						   (concatenate 'string result heads)
+						   acc)
+
+				   (subseq str 0 (position "." str :test #'string=))
+					 )
+				   
+				   )
 				  ((opr head) 
 				   (if (snull result) 
 					 heads
@@ -153,24 +175,44 @@
 
 
 ;;; token のリストにばらす
-(defun token (str)
+(defun tokenize (str)
   ;; 演算子にぶち当たるor尽きるまで
   (labels 
 	((main (str result)
 		(if (snull str) (reverse result)
 		  (let ((tk (token% str)))
+			(print tk)
 			(main 
-			  (subseq str (length tk))
+			 (init (subseq str 
+					  ;; dot wo dounika suru
+					  (if (qnt (char tk 0))
+						(+ 1 (length tk)) 
+						(length tk)))) 
 			  (cons (init tk) result)))))) (main (init str) nil)))
 
 
 
 
-(print (token "P(x) & (Q(y) > (AxAy.(P(x) & Q(y))))"))
+(defun split (str spliter)
+  (labels 
+	((main (str acc  result)
+	 (if (snull str) (reverse (cons acc result))
+	 	(if (nchar= str 0 spliter)
+	   		(main (scdr str) "" (cons acc result))
+	   		(main (scdr str) 
+			 (concatenate 'string acc (string (char str 0))) result)))))
+	(main str "" nil)))
+
+(defun atomic? (str)
+  (not (or (opr (char str 0)) (qnt (char str 0)))))
 
 
-
-
+;; "P(x,y,z,...)" -> (P x y z ...)
+(defun atomic->in (str)
+  (let ((len (position "(" str :test #'string=)))
+	`(,(intern (subseq str 0 len)) 
+	   ,@(mapcar (lambda (x) (intern (init x)))
+				 (split (subseq str (1+ len) (1- (length str)))  #\,)))))
 
 
 

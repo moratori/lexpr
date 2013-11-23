@@ -56,3 +56,11 @@
 	(:export :semantic-conseq :partof))
 (in-package :infer)
 (load "./infer.lisp")
+
+
+(in-package :common-lisp-user)
+(defpackage :parser.lexpr 
+	(:use :common-lisp :const)
+	(:nicknames :parser))
+(in-package :infer)
+(load "./parser.lisp")

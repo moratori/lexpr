@@ -51,7 +51,12 @@
 
 
 ;;; 文字列の演算子の定義
-(defconstant +OPERATOR+ '(">" "&" "V" "~" "-"))
+(defconstant +OPERATOR+ 
+			 '(#\> #\& #\V #\~ #\-))
+
+(defconstant +SC+ #\()
+(defconstant +EC+ #\))
+
 
 ;;;最後尾のインデックス
 (defun li (str) 
@@ -74,6 +79,14 @@
 
 
 
+
+(defun next-paren-acc (acc c sc ec)
+  (cond 
+	((char= c sc) (1+ acc))
+	((char= c ec) (1- acc))
+	(t acc)))
+
+
 (defun innerparen? (str sc ec)
   ;; これが呼ばれたという事は少なくとも
   ;; 始めが ( で始まり 最後が ) で終わるような文字列であるということ
@@ -88,11 +101,9 @@
 	   	(t 
 		 	(let ((head (char str 0)))
 		   		(main (scdr str)
-				 	(cond
-				   	((char= head sc) (1+ acc))
-				   	((char= head ec) (1- acc))
-				   	(t acc)))))))) 
+					  (next-paren-acc acc head sc ec))))))) 
 	(main (scdr str) 1)))
+
 
 ;;;最初と最後がカッコ(sc ecで文字コード)でなくなるまで、意味のないカッコを剥ぐ
 (defun strip-paren (str sc ec)
@@ -104,7 +115,7 @@
 	(t str)))
 
 
-;;; ゴミのスペースを除去っていらないカッコを剥ぐ
+;;; ゴミのスペースを除去っていらないカッコ(sc ec)を剥ぐ
 (defun init (str &optional (sc #\() (ec #\))) 
   (if (snull str)
 	str
@@ -113,43 +124,32 @@
 	  		'(#\space) str) sc ec)))
 
 
-(defun opr (str)
-  (member str +OPERATOR+ :test #'string=))
-
+(defun opr (c)
+  (member c +OPERATOR+ :test #'char=))
 
 
 ;; (P(x) & Q(y)) V R(x)
-(defun token% (str)
+(defun token% (str &optional (sc #\() (ec #\)))
   (labels 
 	((main (str result acc)
 		(if (snull str) result
-			(let ((head (scar str)))
+			(let* ((head (char str 0)) 
+				   (heads (string head)))
 	  			(cond
 				  ((opr head) 
 				   (if (snull result) 
-					 head 
+					 heads
 					 (if (zerop acc) 
 					   result 
-					   (main (scdr str) (concatenate 'string result head) 
-							 (cond 
-							   ((string= head "(") (1+ acc))
-							   ((string= head ")") (1- acc))
-							   (t acc)
-							   )))))
+					   (main (scdr str) 
+							 (concatenate 'string result heads) 
+							 (next-paren-acc acc head sc ec)))))
 				  (t 
 					(main (scdr str) 
-						  (concatenate 'string result head) 
-						  (cond 
-							((string= head "(") (1+ acc))
-							((string= head ")") (1- acc))
-							(t acc))))
-				  )
-	  		)
-		)
-		)
-	 )
-	(main str "" 0))
-  )
+						  (concatenate 'string result heads) 
+						  (next-paren-acc acc head sc ec))))))))
+	(main str "" 0)))
+  
 
 
 ;;; token のリストにばらす
@@ -159,7 +159,6 @@
 	((main (str result)
 		(if (snull str) (reverse result)
 		  (let ((tk (token% str)))
-			(print tk)
 			(main 
 			  (subseq str (length tk))
 			  (cons (init tk) result)))))) (main (init str) nil)))
@@ -167,7 +166,8 @@
 
 
 
-(print (token "(((((P(x) V R(y))) & Q(x))))"))
+(print (token "P(x) & (Q(y) > (AxAy.(P(x) & Q(y))))"))
+
 
 
 

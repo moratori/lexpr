@@ -61,6 +61,7 @@
 (in-package :common-lisp-user)
 (defpackage :parser.lexpr 
 	(:use :common-lisp :const)
-	(:nicknames :parser))
-(in-package :infer)
+	(:nicknames :parser)
+	(:export :expr->in%))
+(in-package :parser)
 (load "./parser.lisp")

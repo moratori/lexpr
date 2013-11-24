@@ -9,8 +9,6 @@ lexpr
 
 ホーン節に限るとか、述語論理の表現力を落とせば、もっとうまく行くかも
 
-あと単一化の戦略が甘すぎるので改良しなければ
-
 ※ style-warning がたくさん出るのは仕様です(
 
 Usage
@@ -20,5 +18,55 @@ inferパッケージのsemantic-conseqに前提となる式集合と
   
 結論となる式を与えると、意味論的帰結となるかどうかを調べます
 
-TESTER.lispを動かしてみるとどんな感じになるかわかります
+TESTER.lispがサンプルになっているので
 
+動かしてみるとどんな感じになるかわかります
+
+main.lisp でインタラクティブに定理証明ができます
+
+```使い方
+$ sbcl --script main.lisp 
+Theorem Prover Beta 0.9
+Input set of wff { 
+? Ax.(P(x) > Q(x))
+inputted: ∀ x.P(x)⊃ Q(x)
+? Ax.(Q(x) > R(x))
+inputted: ∀ x.Q(x)⊃ R(x)
+? Ex.(P(x))
+inputted: ∃ x.P(x)
+? }
+conseq ? Ex.R(x)
+inputted: ∃ x.R(x)
+processing...
+
+{∃x.P(x) , ∀x.Q(x)⊃R(x) , ∀x.P(x)⊃Q(x) , ¬∃x.R(x) , } is contradiction
+```
+
+矛盾(contradiction)になれば意味論的帰結となることが言えます
+
+逆に充足可能(satisfiable)な状態で停止することは少ないです...
+
+演算子は以下の通りです
+
+全称量化: A
+存在量化: E
+否定: ~
+含意: >
+連言: &
+選言: V
+同値: -
+
+
+```使用可能な一階述語論理の式の形式的定義
+	<VAR>        ::= <LISP-SYMBOL>
+	<PRED-SYM>   ::= <LISP-SYMBOL>	
+	<OPERATOR>   ::= > | & | V | ~ | -
+	
+	<QUANTIFIER> ::= A | E
+	<QUANTS>     ::= <QUANTIFIER> <VAR>
+	<QUANTS-PART>::= <QUANTS>+ "."
+
+	<ATOMIC>     ::= <PRED-SYM> "(" <VAR>+ ")"
+	<EXPR>       ::= 
+		<ATOMIC> | "(" <EXPR> <OPERATOR> <EXPR> ")" | <QUANTS-PART> <EXPR> 
+```

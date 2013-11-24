@@ -22,8 +22,8 @@
 
 	*一階述語論理の文字列表現の定義
 
-	<VAR>        ::= <SYMBOL>
-	<PRED-SYM>   ::= <SYMBOL>	
+	<VAR>        ::= <LISP-SYMBOL>
+	<PRED-SYM>   ::= <LISP-SYMBOL>	
 	<OPERATOR>   ::= > | & | V | ~ | -
 	
 	<QUANTIFIER> ::= A | E
@@ -49,7 +49,7 @@
 ;;;	AxAy.P(x,y)
 
 
-(load "./const.lisp")
+
 
 ;;; 文字列の演算子の定義
 (defconstant +OPERATOR+ 
@@ -137,7 +137,6 @@
 (defun token% (str &optional (sc #\() (ec #\)))
   (labels 
 	((main (str result acc)
-		   (print str)
 		(if (snull str) result
 			(let* ((head (char str 0)) 
 				   (heads (string head)))
@@ -167,13 +166,16 @@
 
 
 ;;; token のリストにばらす
+;;; 量化子 と　母式部の２つに分けてくれればいいのに
+;;; 母式の仲間でtokenizeされるからかなりめんどいことになってしまった
+;;; expr->in%が
+;;; あとで書きなおし
 (defun tokenize (str)
   ;; 演算子にぶち当たるor尽きるまで
   (labels 
 	((main (str result)
 		(if (snull str) (reverse result)
 		  (let ((tk (token% str)))
-			(print tk)
 			(main 
 			 (init (subseq str 
 					  ;; dot wo dounika suru
@@ -206,6 +208,14 @@
 	   ,@(mapcar (lambda (x) (intern (init x)))
 				 (split (subseq str (1+ len) (1- (length str)))  #\,)))))
 
+
+(defun quantsp? (str)
+  (cond 
+	((snull str) nil)
+	((not (null (position "." str :test #'string=))) nil)
+	((nchar= str 0 #\~) (quantsp? (scdr str)))
+	((or (nchar= str 0 #\A) (nchar= str 0 #\E)) t)
+	(t nil)))
 
 
 ;; "AxAy~Ez" -> ((+FORALL+ x) (+FORALL+ y) (+NEG+ (+EXIST+ z)))
@@ -248,8 +258,35 @@
 		  (t  (error "undefined operator")))))))
 	(main (init str) nil)))
 
-(print (tokenize "AxAyAz.(P(a,y,z) > Q(x,z))"))
-(print (quants->in " ~Ay Aw ~Ex Az"))
+(defconstant +OPR-in+ 
+			 `((">" . ,+IMPL+)
+			   ("~" . ,+NEG+)
+			   ("&" . ,+AND+)
+			   ("V" . ,+OR+)
+			   ("-" . ,+EQL+)))
+
+(defun opr->in (str)
+  (cdr (assoc str +OPR-IN+ :test #'string=)))
 
 
-
+;; toriaezu ryoukasi no nai siki de kangaeru
+(defun expr->in% (str)
+  ;; <EXPR> <OPERATOR> <EXPR>
+	(labels
+	  ((main (tks)
+		(if (= 1 (length tks))
+	  		(if (atomic? (car tks))
+				(atomic->in (car tks))
+				(expr->in% (car tks)))
+	  		(let ((left (first tks)))
+				(if (string= left "~")
+				  (list +NEG+ (expr->in% (second tks)))
+				  (if (quantsp? left)
+		  			(list (quants->in left) 
+						  (main (cdr tks)))
+		  			(list (opr->in (second tks)) 
+						  (expr->in% left) 
+						  (main (nthcdr 2 tks))))
+				  )	
+			  ))))
+	  (main (tokenize str))))

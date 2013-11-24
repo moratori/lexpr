@@ -50,7 +50,6 @@
 
 
 
-
 ;;; 文字列の演算子の定義
 (defconstant +OPERATOR+ 
 			 '(#\> #\& #\V #\~ #\-))
@@ -280,7 +279,7 @@
 				(expr->in% (car tks)))
 	  		(let ((left (first tks)))
 				(if (string= left "~")
-				  (list +NEG+ (expr->in% (second tks)))
+				  (list +NEG+ (main (cdr tks)))
 				  (if (quantsp? left)
 		  			(list (quants->in left) 
 						  (main (cdr tks)))
@@ -290,3 +289,4 @@
 				  )	
 			  ))))
 	  (main (tokenize str))))
+

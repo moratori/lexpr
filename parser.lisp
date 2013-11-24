@@ -82,10 +82,6 @@
   (string= str ""))
 
 
-
-
-
-
 (defun next-paren-acc (acc c sc ec)
   (cond 
 	((char= c sc) (1+ acc))
@@ -153,11 +149,7 @@
 					 (main (scdr str)
 						   (concatenate 'string result heads)
 						   acc)
-
-				   (subseq str 0 (position "." str :test #'string=))
-					 )
-				   
-				   )
+				   	 (subseq str 0 (position "." str :test #'string=))))
 				  ((opr head) 
 				   (if (snull result) 
 					 heads
@@ -213,6 +205,51 @@
 	`(,(intern (subseq str 0 len)) 
 	   ,@(mapcar (lambda (x) (intern (init x)))
 				 (split (subseq str (1+ len) (1- (length str)))  #\,)))))
+
+
+
+;; "AxAy~Ez" -> ((+FORALL+ x) (+FORALL+ y) (+NEG+ (+EXIST+ z)))
+;; "~EyAz"
+(defun quants->in (str)
+  (labels 
+	((q->in (q)
+		(if (char= q #\A) 
+		  +FORALL+ 
+		  +EXIST+))
+	 (next-q (str)
+			 (position-if 
+						(lambda (x)
+			  				(or (string= x "~") 
+								(string= x "A") 
+								(string= x "E"))) str))
+	 (main (str result)
+		(if (snull str) (reverse result)
+		  (let ((head (char str 0)))
+	   (cond 
+		 ((qnt head)
+		  (let* ((pos (next-q (scdr str)))
+				 (p (if (null pos) (length str) (1+ pos))))
+			(main 
+			  (subseq str p) 
+			  (cons 
+				(list 
+				  (q->in head) 
+				  (intern  (init (subseq str 1 p))))  result))))
+		 ((char= head #\~)
+		  (let* ((m (+ 2 (next-q (scdr str))))
+				 (pos (next-q (subseq str m)))
+				 (p (if (null pos) (length str) (+ m pos))))
+			(main 
+			  (subseq str p)
+			  (cons 
+				(list +NEG+
+					 (car (quants->in (subseq str 1 p))))
+					 result))))
+		  (t  (error "undefined operator")))))))
+	(main (init str) nil)))
+
+(print (tokenize "AxAyAz.(P(a,y,z) > Q(x,z))"))
+(print (quants->in " ~Ay Aw ~Ex Az"))
 
 
 

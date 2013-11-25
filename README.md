@@ -28,18 +28,21 @@ main.lisp でインタラクティブに定理証明ができます
 $ sbcl --script main.lisp 
 Theorem Prover Beta 0.9
 Input set of wff { 
-? Ax.(P(x) > Q(x))
-inputted: ∀ x.P(x)⊃ Q(x)
-? Ax.(Q(x) > R(x))
-inputted: ∀ x.Q(x)⊃ R(x)
-? Ex.(P(x))
-inputted: ∃ x.P(x)
+? Ax.(human(x) > mammal(x))
+inputted: ∀x.human(x)⊃mammal(x)
+? Ax.(mammal(x) > creature(x))
+inputted: ∀x.mammal(x)⊃creature(x)
+? Ax.(creature(x) > mortal(x))
+inputted: ∀x.creature(x)⊃mortal(x)
 ? }
-conseq ? Ex.R(x)
-inputted: ∃ x.R(x)
+conseq ? ~Ex.(human(x) & ~mortal(x))
+inputted: ¬∃x.human(x)∧¬mortal(x)
 processing...
 
-{∃x.P(x) , ∀x.Q(x)⊃R(x) , ∀x.P(x)⊃Q(x) , ¬∃x.R(x) , } is contradiction
+{∀x.creature(x)⊃mortal(x) , 
+ ∀x.mammal(x)⊃creature(x) , 
+ ∀x.human(x)⊃mammal(x) , 
+ ¬(¬∃x.human(x)∧¬mortal(x)) , } is contradiction
 ```
 
 矛盾(contradiction)になれば意味論的帰結となることが言えます

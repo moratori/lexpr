@@ -1,4 +1,5 @@
 
+
 #|
 
 	一階述語論理の文字列表現の式を内部表現にする
@@ -37,43 +38,42 @@
 |#
 
 
-;;; 一般に中置記法は
-;;; <EXPR> <OPERATOR> <EXPR>
-
-;;; P(x)
-;;; P(x,y,z)
-;;;
-;;; P(x) & Q(y)
-;;;	P(x) -> (R(x,y) & Q(y))
-;;;
-;;;	AxAy.P(x,y)
-
-
-
-
-;;; 文字列の演算子の定義
-(defconstant +OPERATOR+ 
-			 '(#\> #\& #\V #\~ #\-))
+(defconstant +OPERATOR+
+			 `((#\~ ,+NEG+  1)
+			   (#\& ,+AND+  2)
+			   (#\V ,+OR+   2)
+			   (#\> ,+IMPL+ 3)
+			   (#\- ,+EQL+  3)))
 
 (defconstant +QUANTS+ 
 			 '(#\A #\E))
 
-(defconstant +SC+ #\()
-(defconstant +EC+ #\))
+
+(defstruct (oper
+			 (:constructor oper (ch)))
+  		(ch nil :type character))
 
 
-;;;最後尾のインデックス
-(defun li (str) 
-  (1- (length str)))
+(defmethod strength ((oper oper))
+  (car (last (assoc (oper-ch oper) +OPERATOR+))))
 
 
-;;; i番目の文字がcか否か
-(defun nchar= (str n c)
-  (char= (char str n) c))
+(defmethod str->in ((oper oper))
+  (second (assoc (oper-ch oper) +OPERATOR+)))
 
-(defun scar (str) 
-  (subseq str 0 1))
 
+
+(defun operator? (ch)
+  (assoc ch +OPERATOR+))
+
+(defun two-term-operator? (ch)
+  (and (char/= ch #\~) (operator? ch)))
+
+(defun qnt? (ch)
+  (member ch +QUANTS+ :test #'char=))
+
+(defun atomic? (str)
+  (not (or (operator? (char str 0)) (qnt? (char str 0)))))
 
 (defun scdr (str)
   (subseq str 1) )
@@ -81,13 +81,25 @@
 (defun snull (str) 
   (string= str ""))
 
+(defun appstr (a b) 
+  (concatenate 'string a b))
+
+(defun paren? (ch)
+  (or (char= ch #\() (char= ch #\))))
+
+;;;最後尾のインデックス
+(defun li (str) 
+  (1- (length str)))
+
+;;; i番目の文字がcか否か
+(defun nchar= (str n c)
+  (char= (char str n) c))
 
 (defun next-paren-acc (acc c sc ec)
   (cond 
 	((char= c sc) (1+ acc))
 	((char= c ec) (1- acc))
 	(t acc)))
-
 
 (defun innerparen? (str sc ec)
   ;; これが呼ばれたという事は少なくとも
@@ -126,65 +138,44 @@
 	  		'(#\space) str) sc ec)))
 
 
-(defun opr (c)
-  (member c +OPERATOR+ :test #'char=))
 
-(defun qnt (c) 
-  (member c +QUANTS+ :test #'char=))
-
-
-;; (P(x) & Q(y)) V R(x)
-(defun token% (str &optional (sc #\() (ec #\)))
-  (labels 
-	((main (str result acc)
+;; 文字列 str を 二項演算子で分ける
+(defun token (str)
+  (labels
+	((main (str paren result)
 		(if (snull str) result
-			(let* ((head (char str 0)) 
-				   (heads (string head)))
-	  			(cond
-				  ((qnt head)
-				   ;; ドットで区切られてるので
-				   ;; sokomade syutoku
-				   (if (not (zerop acc))
-					 (main (scdr str)
-						   (concatenate 'string result heads)
-						   acc)
-				   	 (subseq str 0 (position "." str :test #'string=))))
-				  ((opr head) 
-				   (if (snull result) 
-					 heads
-					 (if (zerop acc) 
-					   result 
-					   (main (scdr str) 
-							 (concatenate 'string result heads) 
-							 (next-paren-acc acc head sc ec)))))
-				  (t 
-					(main (scdr str) 
-						  (concatenate 'string result heads) 
-						  (next-paren-acc acc head sc ec))))))))
-	(main str "" 0)))
-  
+		  (let* ((head  (char str 0))
+			   	 (heads (string head))
+				 (next  (scdr str)))
+			(cond 
+			  ((and (char/= #\~ head) (operator? head))
+			   (if (zerop paren) 
+				 (if (snull result) heads result)
+				 (main next paren (appstr result heads))))
+			  ((paren? head)
+			   (main next (if (char= head #\() (1+ paren) (1- paren)) (appstr result heads)))
+			  (t 
+				(main next paren (appstr result heads))))))))
+	(main str 0 "")))
 
 
-;;; token のリストにばらす
-;;; 量化子 と　母式部の２つに分けてくれればいいのに
-;;; 母式の仲間でtokenizeされるからかなりめんどいことになってしまった
-;;; expr->in%が
-;;; あとで書きなおし
 (defun tokenize (str)
-  ;; 演算子にぶち当たるor尽きるまで
   (labels 
 	((main (str result)
-		(if (snull str) (reverse result)
-		  (let ((tk (token% str)))
-			(main 
-			 (init (subseq str 
-					  ;; dot wo dounika suru
-					  (if (qnt (char tk 0))
-						(+ 1 (length tk)) 
-						(length tk)))) 
-			  (cons (init tk) result)))))) (main (init str) nil)))
+	   (if (snull str) (reverse result)
+		   (let ((tk (token str)))
+			 (main 
+			   (subseq str (length tk))
+			   (cons (init tk) result))))))
+	(main (init str) nil)))
 
 
+(defun weak-operator (tklst)
+  (sort 
+	(remove-if-not 
+		(lambda (x) (two-term-operator? (char x 0))) tklst)
+	(lambda (x y)
+	  (> (strength (oper (char x 0))) (strength (oper (char y 0)))))))
 
 
 (defun split (str spliter)
@@ -197,29 +188,12 @@
 			 (concatenate 'string acc (string (char str 0))) result)))))
 	(main str "" nil)))
 
-(defun atomic? (str)
-  (not (or (opr (char str 0)) (qnt (char str 0)))))
-
-
-;; "P(x,y,z,...)" -> (P x y z ...)
 (defun atomic->in (str)
   (let ((len (position "(" str :test #'string=)))
 	`(,(intern (subseq str 0 len)) 
 	   ,@(mapcar (lambda (x) (intern (init x)))
 				 (split (subseq str (1+ len) (1- (length str)))  #\,)))))
 
-
-(defun quantsp? (str)
-  (cond 
-	((snull str) nil)
-	((not (null (position "." str :test #'string=))) nil)
-	((nchar= str 0 #\~) (quantsp? (scdr str)))
-	((or (nchar= str 0 #\A) (nchar= str 0 #\E)) t)
-	(t nil)))
-
-
-;; "AxAy~Ez" -> ((+FORALL+ x) (+FORALL+ y) (+NEG+ (+EXIST+ z)))
-;; "~EyAz"
 (defun quants->in (str)
   (labels 
 	((q->in (q)
@@ -236,7 +210,7 @@
 		(if (snull str) (reverse result)
 		  (let ((head (char str 0)))
 	   (cond 
-		 ((qnt head)
+		 ((qnt? head)
 		  (let* ((pos (next-q (scdr str)))
 				 (p (if (null pos) (length str) (1+ pos))))
 			(main 
@@ -258,36 +232,26 @@
 		  (t  (error "undefined operator")))))))
 	(main (init str) nil)))
 
-(defconstant +OPR-in+ 
-			 `((">" . ,+IMPL+)
-			   ("~" . ,+NEG+)
-			   ("&" . ,+AND+)
-			   ("V" . ,+OR+)
-			   ("-" . ,+EQL+)))
 
-(defun opr->in (str)
-  (cdr (assoc str +OPR-IN+ :test #'string=)))
+(defun concat (lst &optional (s ""))
+  (reduce (lambda (x y) (concatenate 'String x s y)) lst))
 
-
-;; toriaezu ryoukasi no nai siki de kangaeru
 (defun expr->in% (str)
-  ;; <EXPR> <OPERATOR> <EXPR>
-	(labels
-	  ((main (tks)
-		(if (= 1 (length tks))
-	  		(if (atomic? (car tks))
-				(atomic->in (car tks))
-				(expr->in% (car tks)))
-	  		(let ((left (first tks)))
-				(if (string= left "~")
-				  (list +NEG+ (main (cdr tks)))
-				  (if (quantsp? left)
-		  			(list (quants->in left) 
-						  (main (cdr tks)))
-		  			(list (opr->in (second tks)) 
-						  (expr->in% left) 
-						  (main (nthcdr 2 tks))))
-				  )	
-			  ))))
-	  (main (tokenize str))))
+ (let* ((tar (tokenize str))
+		(oporder (weak-operator tar)))
+	(if (null oporder)
+	  (let ((expr (car tar)))
+		(cond 
+		  ((atomic? expr) 
+		   (atomic->in expr))
+		  ((char= (char expr 0)  #\~)
+		   (list +NEG+ (expr->in% (scdr expr))))
+		  (t (let ((sub (split expr #\.)))
+			   (list (quants->in (car sub))
+					 (expr->in% (concat (cdr sub) ".")) )))))
+	  (let ((pos  (position (car oporder) tar :test #'string=)))
+		 (list 
+			(str->in (oper (char (car oporder) 0)))
+			(expr->in% (concat (subseq tar 0 pos)))
+			(expr->in% (concat (subseq tar (1+ pos)))))))))
 

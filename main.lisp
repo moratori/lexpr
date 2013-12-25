@@ -36,20 +36,17 @@
 
 
 (defun main ()
-  (format t "Input set of wff { ~%")
+  (format t "~%~%Input set of wff { ~%")
   (force-output t)
-  (let ((in (input)))
-	(infer:semantic-conseq 
-	  (mapcar #'parser:expr->in% in)
-	  (let ((tmp (parser:expr->in% (read-one "conseq ?"))))
-		(format t "inputted: ")
-		(dump:dump-lexpr tmp)
-		(format t "processing...~%~%")
-		tmp
-	  )
-	  )
-	(main)))
-
+  (ignore-errors 
+	(let ((in (input)))
+		 (infer:semantic-conseq 
+	  		(mapcar #'parser:expr->in% in)
+	  		(let ((tmp (parser:expr->in% (read-one "conseq ?"))))
+				(format t "inputted: ")
+				(dump:dump-lexpr tmp)
+				(format t "processing...~%")
+				tmp)))) (main))
 
 (credit)
 (main)

@@ -31,6 +31,18 @@
 (defconstant +OR-S+     "∨")
 (defconstant +EQL-S+    "⇔")
 
+
+(defconstant +FOR-TEX+
+			 `(
+			   (,+FORALL-S+ . " \\forall ")
+			   (,+EXIST-S+  . " \\exists ")
+			   (,+IMPL-S+   . " \\to ")
+			   (,+NEG-S+    . " \\lnot ")
+			   (,+AND-S+    . " \\land ")
+			   (,+OR-S+     . " \\lor ")
+			   (,+EQL-S+    . " \\Leftrightarrow ")))
+
+
 (defconstant +STRING-EXPR+ 
 	`(
 		(,+EXIST+  . ,+EXIST-S+)

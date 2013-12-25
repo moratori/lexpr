@@ -1,4 +1,5 @@
 
+;(load "./const.lisp")
 
 #|
 
@@ -171,11 +172,19 @@
 
 
 (defun weak-operator (tklst)
-  (sort 
+ (let ((l  (sort 
 	(remove-if-not 
 		(lambda (x) (two-term-operator? (char x 0))) tklst)
 	(lambda (x y)
-	  (> (strength (oper (char x 0))) (strength (oper (char y 0)))))))
+	  (> (strength (oper (char x 0))) (strength (oper (char y 0))))))))
+   ;; 左結合のほうがいいので
+   (cond 
+	 ((null l) l)
+	 ((every 
+		(lambda (x) 
+		  (= (strength (oper (char (car l) 0)))
+			 (strength (oper (char x 0))))) l) (reverse l))
+	 (t l))))
 
 
 (defun split (str spliter)
@@ -233,8 +242,16 @@
 	(main (init str) nil)))
 
 
-(defun concat (lst &optional (s ""))
-  (reduce (lambda (x y) (concatenate 'String x s y)) lst))
+(defun concat (lst &key (s "") (f (lambda (x)x)))
+  (reduce (lambda (x y) (concatenate 'String x s (funcall f y))) lst))
+
+
+(defun concat-wrap-token (lst)
+  (concat lst :f
+		  (lambda (x)
+			(if (two-term-operator? (char x 0))
+			  x
+			  (concatenate 'String "(" x ")")))))
 
 (defun expr->in% (str)
  (let* ((tar (tokenize str))
@@ -248,10 +265,10 @@
 		   (list +NEG+ (expr->in% (scdr expr))))
 		  (t (let ((sub (split expr #\.)))
 			   (list (quants->in (car sub))
-					 (expr->in% (concat (cdr sub) ".")) )))))
+					 (expr->in% (concat (cdr sub) :s ".")) )))))
 	  (let ((pos  (position (car oporder) tar :test #'string=)))
 		 (list 
 			(str->in (oper (char (car oporder) 0)))
-			(expr->in% (concat (subseq tar 0 pos)))
-			(expr->in% (concat (subseq tar (1+ pos)))))))))
+			(expr->in% (concat-wrap-token (subseq tar 0 pos)))
+			(expr->in% (concat-wrap-token (subseq tar (1+ pos)))))))))
 

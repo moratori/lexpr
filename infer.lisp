@@ -170,15 +170,23 @@
 	(format t "------------------------------------------~%~%"))
 
 
+
+(defconstant +LIMIT+ 100)
+(defvar *return* nil)
+
+
 ;;; lexprs を構成する式の要素
 ;;; 1. 全称量化な式
 ;;; 2. 存在量化な式
 ;;; 3. 展開可能式 or and
 ;;; 4. リテラル
-(defun contrap-main (lexprs usedsym &optional (trc nil))
+(defun contrap-main (lexprs usedsym &optional (trc nil) (limit +LIMIT+))
 	(when trc
 	  (debug-print lexprs usedsym) (sleep 5))
 	(cond
+	    ;;探索のlimitに達したら
+		((zerop limit)
+		 (setf *return* t) nil)
 		;; 自分の否定の形の式が含まれていたら矛盾
 		((closep lexprs) t)
 		;; すべてがリテラルで上の条件に合致しない、つまり
@@ -207,7 +215,7 @@
 									(append 
 										falq-lexprs 
 										rid-extq-lexprs
-										nrml-lexprs) (append syms usedsym) trc)))
+										nrml-lexprs) (append syms usedsym) trc (1- limit))))
 						((not (null extb-lexprs))
 							;; ここにきたなら 少なくとも extq-lexprs はnilのはず
 							;; なぜなら上で徹底的に取り除かれるから
@@ -225,12 +233,12 @@
 								   		((eq opr +AND+)
 											(contrap-main 
 												(append 
-													(split-sublexpr main) next-base) usedsym trc ))
+													(split-sublexpr main) next-base) usedsym trc (1- limit)))
 										((eq opr +OR+)
 											(every 
 												(lambda (x)
 													(contrap-main 
-														`(,@next-base ,x) usedsym trc ))
+														`(,@next-base ,x) usedsym trc (1- limit)))
 												(split-sublexpr main)))
 										(t "undefined operator: ~A" opr))))
 						((not (null falq-lexprs))
@@ -251,33 +259,43 @@
 											(update (list main bound))
 											(next `(,@other-falq-lexprs ,update ,unifed ,@nrml-lexprs)))
 										(if flag
-											(contrap-main next (cons sym usedsym) trc )
-											(contrap-main next usedsym trc ))))))
+											(contrap-main next (cons sym usedsym) trc (1- limit))
+											(contrap-main next usedsym trc (1- limit)))))))
 						(t (error "unexpected error: ~A~%" lexprs)))))))
 
 
 ;;; contrap-main へのインターフェース
 (defun contrap (lexprs &optional (trc nil))
+    (setf *return* nil)
 	(multiple-value-bind 
 		(clean-lexprs init-free-value) (util:preproc lexprs)
-		(contrap-main (forall-init  clean-lexprs) init-free-value trc)))
+		(values
+		  (contrap-main 
+		  	(forall-init  clean-lexprs) 
+		  	init-free-value 
+		  	trc)
+		  *return*)))
 
 
 
 (defun check-contrap (lexprs &optional (trc nil))
 	(format t "{")
 	(mapc (lambda (x) (dump:dump-lexpr x :template "~A , ")) lexprs)
-	(let ((ctr? (contrap lexprs trc)))
+	(multiple-value-bind (ctr? returned?) (contrap lexprs trc)
        (format t 
-		(if ctr? "} is contradiction~%~%" "} is satisfiable~%~%")) ctr?))
+		(cond 
+		  (returned? "} is undeterminable~%~%")
+		  (ctr?  "} is contradiction~%~%" )
+		  (t "} is satisfiable~%~%"))) (values ctr? returned?)))
 
 
 ;; lexpr は lexprs からの 意味論的帰結となるか
 (defun semantic-conseq (lexprs lexpr &optional (trc nil) (ishow t))
 	(let ((target `(,@lexprs (,+NEG+ ,lexpr))))
       (if ishow 
-        (check-contrap target trc)
-        (contrap target trc))))
+		(multiple-value-bind (ctr? returned?) (check-contrap target trc)
+		  (if returned? -1 ctr?))
+        (multiple-value-bind (ctr? returned?) (contrap target trc)
+		  (if returned? -1 ctr?)))))
  
-
 

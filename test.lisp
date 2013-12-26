@@ -4,8 +4,10 @@
 
 (infer:lexprs->tex
   (list 
-	(parser:expr->in% "P(x) & (P(x) > Q(x)) > Q(x)")
+	(parser:expr->in% "Ax.(P(x) > Q(x))")
+	(parser:expr->in% "Ax.(Q(x) > R(x))")
+	(parser:expr->in% "~Ax.(~R(x) > ~P(x))")
 	)
-  "foo.tex"
+  "foo4.tex"
   )
 

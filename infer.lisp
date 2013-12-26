@@ -119,7 +119,7 @@
 (defun uni-exist (e-lexprs)
 	(let ((exist-sym 
 			(loop for x from 0 upto (1- (length e-lexprs)) 
-				collect (gensym "RID-EXIST-"))))
+				collect (gensym "RE-"))))
 		(values 
 			(map 'list 
 				(lambda (expr sym) 
@@ -158,7 +158,7 @@
 	(let ((tmp (set-difference usedsym forall-usedsym)))
 		(cond 
 			((null tmp)
-				(values (gensym "RID-FORALL-") t))
+				(values (gensym "RF-") t))
 			(t (values (car tmp) nil)))))
 
 (defun debug-print (lexprs usedsym)
@@ -180,20 +180,22 @@
 ;;; 2. 存在量化な式
 ;;; 3. 展開可能式 or and
 ;;; 4. リテラル
-(defun contrap-main (lexprs usedsym &key (trc nil) (limit +LIMIT+) (strm nil))
+(defun contrap-main (lexprs usedsym &key (trc nil) (limit +LIMIT+) (strm nil) (nextcall nil))
 	(when trc
 	  (debug-print lexprs usedsym) (sleep 5))
 	(cond
 	    ;;探索のlimitに達したら
 		((zerop limit)
-		 (print "here")
-		 (setf *return* t) nil)
+		 (setf *return* t) 
+		 (values nil t))
 		;; 自分の否定の形の式が含まれていたら矛盾
-		((closep lexprs) t)
+		((closep lexprs) 
+		 (values t t))
 		;; すべてがリテラルで上の条件に合致しない、つまり
 		;; 全ての式が自分の否定の形を含まないなら
 		;; これ以上つくす手段はないので矛盾していない
-		((all-literalp lexprs) nil)
+		((all-literalp lexprs) 
+		 (values nil t))
 		(t
 			;; ここのlet でlexprs を
 			;; 構成する式を4種類(5)に分ける
@@ -216,7 +218,12 @@
 									(append 
 										falq-lexprs 
 										rid-extq-lexprs
-										nrml-lexprs) (append syms usedsym) :trc trc :limit (1- limit) :strm strm)))
+										nrml-lexprs) 
+									(append syms usedsym) 
+									:trc trc 
+									:limit (1- limit) 
+									:strm strm
+									:nextcall nil)))
 						((not (null extb-lexprs))
 							;; ここにきたなら 少なくとも extq-lexprs はnilのはず
 							;; なぜなら上で徹底的に取り除かれるから
@@ -234,28 +241,71 @@
 								   		((eq opr +AND+)
 											(contrap-main 
 												(append 
-													(split-sublexpr main) next-base) usedsym :trc trc :limit (1- limit) :strm strm))
+													(split-sublexpr main) next-base) 
+												usedsym 
+												:trc trc 
+												:limit (1- limit) 
+												:strm strm
+												:nextcall nil))
 										((eq opr +OR+)
 											(every 
 												(lambda (x)
-												    
-												  	(when strm 
-													  (print "buzzzz")
-													  (chunk-start (first x) strm)
-													  (print "fugafuga"))
+												   	
+													(if strm 
+													  (progn
 													
-													(let ((tmp (contrap-main 
-														`(,@next-base ,x) usedsym :trc trc :limit (1- limit) :strm strm)
-															))
-														(when strm
-													  		(chunk-end strm))	  
-														tmp
-													  )
-												
-													
-													)
+														;;; strm が真 つまり tex への出力を行う場合は
+														;;; drawable であることが確かに確かめられているはずなので
+														;;; *return* が真に成ることはないからスワップする必要はない
+														
+														(format strm "\\chunk{~%")
+
+														(multiple-value-bind 
+													  		(result next?)
+													  		(contrap-main 
+																`(,@next-base ,x) 
+																 usedsym 
+														 		 :trc trc 
+														 		 :limit (1- limit) 
+														 		 :strm nil
+														 		 :nextcall t)
+
+															(print next?)
+
+															(if next? 
+															  (format strm "~A}" 
+																(instr->tex (dump:lexpr->string (first x))))
+															  (format strm "\\begin{bundle}{~A}"
+																(instr->tex (dump:lexpr->string (first x)))))
+
+															(contrap-main 
+																`(,@next-base ,x) 
+																 usedsym 
+														 		 :trc trc 
+														 		 :limit (1- limit) 
+														 		 :strm strm
+														 		 :nextcall nextcall)
+														
+															(unless next? 
+															  (format strm "\\end{bundle}}"))
+
+															result
+													  
+														)
+
+
+														)
+													  (progn 
+														(contrap-main 
+																`(,@next-base ,x) 
+																 usedsym 
+														 		 :trc trc 
+														 		 :limit (1- limit) 
+														 		 :strm strm
+														 		 :nextcall nextcall))))
+
 												(split-sublexpr main)))
-										(t "undefined operator: ~A" opr))))
+										(t (error "undefined operator: ~A" opr)))))
 						((not (null falq-lexprs))
 							(let*  ((target (car falq-lexprs)) 
 									;; ターゲットとなる全称量化な式が入る
@@ -274,8 +324,20 @@
 											(update (list main bound))
 											(next `(,@other-falq-lexprs ,update ,unifed ,@nrml-lexprs)))
 										(if flag
-											(contrap-main next (cons sym usedsym) :trc trc :limit (1- limit) :strm strm)
-											(contrap-main next usedsym :trc trc :limit (1- limit) :strm strm))))))
+											(contrap-main 
+											  next 
+											  (cons sym usedsym) 
+											  :trc trc 
+											  :limit (1- limit) 
+											  :strm strm
+											  :nextcall nil)
+											(contrap-main 
+											  next 
+											  usedsym 
+											  :trc trc 
+											  :limit (1- limit) 
+											  :strm strm
+											  :nextcall nil))))))
 						(t (error "unexpected error: ~A~%" lexprs)))))))
 
 
@@ -286,8 +348,7 @@
 	(multiple-value-bind 
 		(clean-lexprs init-free-value) (util:preproc lexprs)
 		(when strm
-		  (first-write lexprs strm)
-		  (print "hogeee"))
+		  (first-write lexprs strm))
 		(values
 		  (contrap-main 
 		  	(forall-init  clean-lexprs) 
@@ -344,10 +405,11 @@
 
 
 
-(defun init-tex (strm)
+(defun init-tex (strm which)
   (format 
 	strm 
-	"\\documentclass{jarticle}~%\\usepackage{ecltree,epic}~%\\begin{document}~%"))
+	"\\documentclass{jarticle}~%\\usepackage{ecltree,epic}~%\\begin{document}~%~A~%" 
+	which))
 
 (defun finalize-tex (strm)
   (format 
@@ -358,10 +420,12 @@
 (defun first-write (lexprs strm)
   (format 
 	strm
-	"\\begin{bundle}{~% \\begin{tabular}{c}~%~{~A~^\\\\~%~}\\end{tabular}}"
+	"\\begin{bundle}{~%\\begin{tabular}{c}~%~{~A~^\\\\~%~}\\end{tabular}}"
 	(mapcar 
 	  (lambda (x)
 		(instr->tex (dump:lexpr->string x))) lexprs)))
+
+
 
 (defun chunk-start (lexpr strm)
   (format 
@@ -372,19 +436,31 @@
 (defun chunk-end (strm)
   (format strm "\\end{bundle}}"))
 
+
+(defun start-node (strm)
+  (format strm "\\chunk{~%"))
+
+
+(defun start-inner-node (strm lexpr)
+  (format strm "\\begin{bundle}{~A}" (instr->tex (dump:lexpr->string lexpr))))
+
+(defun end-node (strm)
+  
+  )
+
+
 (defun drawable? (lexprs)
   (multiple-value-bind (ctr? returned?) (contrap lexprs)
 	(declare (ignore ctr?))
-	(null returned?)))
+	(values (null returned?) ctr?)))
 
 (defun lexprs->tex (lexprs filename)
-  (if (drawable? lexprs)
-	(with-open-file (out filename :direction :output :if-exists :supersede)
-	  (init-tex out)
-	  (print "fooo")
-	  (contrap lexprs nil out)
-	  (print "baaarr")
-	  (finalize-tex out))	nil))
+  (multiple-value-bind (flag which) (drawable? lexprs)
+	(if flag
+		(with-open-file (out filename :direction :output :if-exists :supersede)
+	  		(init-tex out (if which "\\Large{Contradiction}\\\\\\\\" "\\Large{Satisfiable}\\\\\\\\"))
+	  		(contrap lexprs nil out)
+	  		(finalize-tex out))	nil)))
 
 
 

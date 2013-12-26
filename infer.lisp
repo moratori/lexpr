@@ -180,12 +180,13 @@
 ;;; 2. 存在量化な式
 ;;; 3. 展開可能式 or and
 ;;; 4. リテラル
-(defun contrap-main (lexprs usedsym &optional (trc nil) (limit +LIMIT+))
+(defun contrap-main (lexprs usedsym &key (trc nil) (limit +LIMIT+) (strm nil))
 	(when trc
 	  (debug-print lexprs usedsym) (sleep 5))
 	(cond
 	    ;;探索のlimitに達したら
 		((zerop limit)
+		 (print "here")
 		 (setf *return* t) nil)
 		;; 自分の否定の形の式が含まれていたら矛盾
 		((closep lexprs) t)
@@ -215,7 +216,7 @@
 									(append 
 										falq-lexprs 
 										rid-extq-lexprs
-										nrml-lexprs) (append syms usedsym) trc (1- limit))))
+										nrml-lexprs) (append syms usedsym) :trc trc :limit (1- limit) :strm strm)))
 						((not (null extb-lexprs))
 							;; ここにきたなら 少なくとも extq-lexprs はnilのはず
 							;; なぜなら上で徹底的に取り除かれるから
@@ -233,12 +234,26 @@
 								   		((eq opr +AND+)
 											(contrap-main 
 												(append 
-													(split-sublexpr main) next-base) usedsym trc (1- limit)))
+													(split-sublexpr main) next-base) usedsym :trc trc :limit (1- limit) :strm strm))
 										((eq opr +OR+)
 											(every 
 												(lambda (x)
-													(contrap-main 
-														`(,@next-base ,x) usedsym trc (1- limit)))
+												    
+												  	(when strm 
+													  (print "buzzzz")
+													  (chunk-start (first x) strm)
+													  (print "fugafuga"))
+													
+													(let ((tmp (contrap-main 
+														`(,@next-base ,x) usedsym :trc trc :limit (1- limit) :strm strm)
+															))
+														(when strm
+													  		(chunk-end strm))	  
+														tmp
+													  )
+												
+													
+													)
 												(split-sublexpr main)))
 										(t "undefined operator: ~A" opr))))
 						((not (null falq-lexprs))
@@ -259,21 +274,25 @@
 											(update (list main bound))
 											(next `(,@other-falq-lexprs ,update ,unifed ,@nrml-lexprs)))
 										(if flag
-											(contrap-main next (cons sym usedsym) trc (1- limit))
-											(contrap-main next usedsym trc (1- limit)))))))
+											(contrap-main next (cons sym usedsym) :trc trc :limit (1- limit) :strm strm)
+											(contrap-main next usedsym :trc trc :limit (1- limit) :strm strm))))))
 						(t (error "unexpected error: ~A~%" lexprs)))))))
 
 
 ;;; contrap-main へのインターフェース
-(defun contrap (lexprs &optional (trc nil))
+;;; こいつの引数の strm は tex 出力のため
+(defun contrap (lexprs &optional (trc nil) (strm nil))
     (setf *return* nil)
 	(multiple-value-bind 
 		(clean-lexprs init-free-value) (util:preproc lexprs)
+		(when strm
+		  (first-write lexprs strm)
+		  (print "hogeee"))
 		(values
 		  (contrap-main 
 		  	(forall-init  clean-lexprs) 
 		  	init-free-value 
-		  	trc)
+		  	:trc trc :strm strm)
 		  *return*)))
 
 
@@ -298,4 +317,75 @@
         (multiple-value-bind (ctr? returned?) (contrap target trc)
 		  (if returned? -1 ctr?)))))
  
+
+
+
+
+
+
+
+
+;;; 
+;;; 
+;;; パッケージ相互依存の関係で調整するのめんどいので(asdf 使うしかないかな)
+;;; 用途は違うけどここに書かざるを得ないコードが以下(もう！Lispなんか嫌い！)
+;;; 
+
+(defun instr->tex (str &optional (result ""))
+  (cond 
+	((string= str "") 
+	 (concatenate 'string "$" result "$"))
+	((not (null (assoc (subseq str 0 1) +FOR-TEX+ :test #'string=)))
+	 (instr->tex 
+	   (subseq str 1 ) 
+	   (concatenate 'string result (cdr (assoc (subseq str 0 1) +FOR-TEX+ :test #'string=))) ))
+	(t 
+	  (instr->tex (subseq str 1) (concatenate 'string result (subseq str 0 1))))))
+
+
+
+(defun init-tex (strm)
+  (format 
+	strm 
+	"\\documentclass{jarticle}~%\\usepackage{ecltree,epic}~%\\begin{document}~%"))
+
+(defun finalize-tex (strm)
+  (format 
+	strm
+	"\\end{bundle}~%\\end{document}"))
+
+
+(defun first-write (lexprs strm)
+  (format 
+	strm
+	"\\begin{bundle}{~% \\begin{tabular}{c}~%~{~A~^\\\\~%~}\\end{tabular}}"
+	(mapcar 
+	  (lambda (x)
+		(instr->tex (dump:lexpr->string x))) lexprs)))
+
+(defun chunk-start (lexpr strm)
+  (format 
+	strm
+	"\\chunk{~%\\begin{bundle}{~A}" 
+	(instr->tex (dump:lexpr->string lexpr))))
+
+(defun chunk-end (strm)
+  (format strm "\\end{bundle}}"))
+
+(defun drawable? (lexprs)
+  (multiple-value-bind (ctr? returned?) (contrap lexprs)
+	(declare (ignore ctr?))
+	(null returned?)))
+
+(defun lexprs->tex (lexprs filename)
+  (if (drawable? lexprs)
+	(with-open-file (out filename :direction :output :if-exists :supersede)
+	  (init-tex out)
+	  (print "fooo")
+	  (contrap lexprs nil out)
+	  (print "baaarr")
+	  (finalize-tex out))	nil))
+
+
+
 

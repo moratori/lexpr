@@ -135,6 +135,7 @@
 ;;; (-> (P x) (Q x)) -> (or (not (P x)) (Q x))
 (defun impl->or (lexpr)
 	(destructuring-bind (opr p q) lexpr
+	     (declare (ignore opr))
 		`(,+OR+ (,+NEG+ ,p) ,q)))
 
 
@@ -142,6 +143,7 @@
 ;;; (<-> p q) -> (and (-> p q) (-> q p))
 (defun eq->impl (lexpr)
 	(destructuring-bind (opr p q) lexpr
+	     (declare (ignore opr))
 		`(,+AND+ (,+IMPL+ ,p ,q) (,+IMPL+ ,q ,p))))
 
 
@@ -174,6 +176,7 @@
 ;;; (not (not (forall x))) -> (forall x) 
 (defun contrquant (quant)
 	(destructuring-bind (head snd) quant
+	    (declare (ignore snd))
 		(cond 
 			((not (eq head +NEG+)) 
 				(values quant nil))
@@ -277,6 +280,7 @@
 	(cond 
 		((demorganp lexpr) 
 			(destructuring-bind (neg (opr . tail)) lexpr
+			    (declare (ignore neg))
 				;; neg := not
 				;; opr := or | and
 				;; tail := ((P x) (Q x) ...)

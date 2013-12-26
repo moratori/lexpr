@@ -1,6 +1,6 @@
 
 
-(load "defpack.lisp")
+(load "./defpack.lisp")
 
 
 

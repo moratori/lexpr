@@ -21,7 +21,8 @@
 		:+EQL-S+    :+STRING-EXPR+
 		:+NW+       :+LB+
 		:+RB+       :+SP+
-		:+CM+       :+OPR-STRENGTH+))
+		:+CM+       :+OPR-STRENGTH+
+		:+FOR-TEX+))
 (in-package :const)
 (load "./const.lisp")
 
@@ -53,7 +54,10 @@
 (defpackage :inference.lexpr 
 	(:use :common-lisp :const)
 	(:nicknames :infer)
-	(:export :semantic-conseq :partof))
+	(:export :semantic-conseq 
+			 :partof
+			 :contrap
+			 :lexprs->tex))
 (in-package :infer)
 (load "./infer.lisp")
 
@@ -66,3 +70,5 @@
 			 ))
 (in-package :parser)
 (load "./parser.lisp")
+
+

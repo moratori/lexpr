@@ -270,7 +270,6 @@
 														 		 :strm nil
 														 		 :nextcall t)
 
-															(print next?)
 
 															(if next? 
 															  (format strm "~A}" 

@@ -5,6 +5,11 @@ lexpr
 
 ホーン節に限るとか、述語論理の表現力を落とせば、もっとうまく行くかも
 
+タブロー木をTeXに出力したりできます
+
+![tableau-tree-sample](tree.png)
+
+
 ※ style-warning がたくさん出るのは仕様です(
 
 Usage

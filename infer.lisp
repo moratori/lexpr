@@ -458,7 +458,7 @@
   (multiple-value-bind (flag which) (drawable? lexprs)
 	(if flag
 		(with-open-file (out filename :direction :output :if-exists :supersede)
-	  		(init-tex out (if which "\\Large{Contradiction}\\\\\\\\" "\\Large{Satisfiable}\\\\\\\\"))
+	  		(init-tex out (if which "\\textgt{Contradiction}\\\\" "\\textgt{Satisfiable}\\\\"))
 	  		(contrap lexprs nil out)
 	  		(finalize-tex out))	nil)))
 

@@ -173,6 +173,7 @@
 
 (defconstant +LIMIT+ 100)
 (defvar *return* nil)
+(defvar *disjuctioned* nil)
 
 
 ;;; lexprs を構成する式の要素
@@ -248,6 +249,9 @@
 												:strm strm
 												:nextcall nil))
 										((eq opr +OR+)
+
+											(setf *disjuctioned* t)
+
 											(every 
 												(lambda (x)
 												   	
@@ -342,11 +346,13 @@
 
 ;;; contrap-main へのインターフェース
 ;;; こいつの引数の strm は tex 出力のため
-(defun contrap (lexprs &optional (trc nil) (strm nil))
+(defun contrap (lexprs &optional (trc nil) (strm nil) (discheck nil))
     (setf *return* nil)
+	(setf *disjuctioned* nil)
+
 	(multiple-value-bind 
 		(clean-lexprs init-free-value) (util:preproc lexprs)
-		(when strm
+		(when (and (not discheck)  strm)
 		  (first-write lexprs strm))
 		(values
 		  (contrap-main 
@@ -415,19 +421,46 @@
 	"\\documentclass{jarticle}~%\\usepackage{ecltree,epic}~%\\begin{document}~%~A~%" 
 	which))
 
-(defun finalize-tex (strm)
-  (format 
-	strm
-	"\\end{bundle}~%\\end{document}"))
+(defun finalize-tex (strm lexprs)
+  ;;　ここもfirstwriteに同じく、bundle がいるか否か 
+
+
+  (contrap lexprs nil nil t) ;; *disjuctioned* への副作用を期待
+
+  (if *disjuctioned*
+ 	(format 
+		strm
+		"\\end{bundle}~%\\end{document}")
+	(format 
+	  strm 
+	  "\\end{document}")	
+	)
+
+ )
 
 
 (defun first-write (lexprs strm)
-  (format 
-	strm
-	"\\begin{bundle}{~%\\begin{tabular}{c}~%~{~A~^\\\\~%~}\\end{tabular}}"
-	(mapcar 
+
+  ;; first-write でbegin bundle から書き始めるためには +OR+　の分岐のとこに行くかを確認する必要がある
+  ;; ラッパ　contrap では first-write を呼んでしまい、これは相互再帰の停止条件がどうしようもないので
+  ;; contrap-main を裸で呼ぶ必要がある
+  ;; とおもったけど、 contrap に そのためだけの制御引数つけて回避しよう ...
+  
+  (contrap lexprs nil nil t) ;; *disjuctioned* への副作用を期待
+
+
+  (let ((each (mapcar 
 	  (lambda (x)
-		(instr->tex (dump:lexpr->string x))) lexprs)))
+		(instr->tex (dump:lexpr->string x))) lexprs) ))
+	(if *disjuctioned* 
+	(format 
+		strm
+		"\\begin{bundle}{~%\\begin{tabular}{c}~%~{~A~^\\\\~%~}\\end{tabular}}"
+		each)
+	(format 
+		strm
+		"\\begin{tabular}{c}~%~{~A~^\\\\~%~}\\end{tabular}"
+		each))))
 
 
 
@@ -458,13 +491,16 @@
 	(declare (ignore ctr?))
 	(values (null returned?) ctr?)))
 
+
+;; first-write と finalize-tex でやってる discheck は、
+;; ここで代表してヤルべきだけどほえ〜
 (defun lexprs->tex (lexprs filename)
   (multiple-value-bind (flag which) (drawable? lexprs)
 	(if flag
 		(with-open-file (out filename :direction :output :if-exists :supersede)
 	  		(init-tex out (if which "\\textgt{Contradiction}\\\\" "\\textgt{Satisfiable}\\\\"))
 	  		(contrap lexprs nil out)
-	  		(finalize-tex out))	nil)))
+	  		(finalize-tex out lexprs))	nil)))
 
 
 

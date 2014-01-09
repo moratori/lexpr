@@ -357,14 +357,19 @@
 
 
 
-(defun check-contrap (lexprs &optional (trc nil))
+(defun check-contrap (lexprs old lexpr &optional (trc nil))
 	(format t "{")
 	(mapc (lambda (x) (dump:dump-lexpr x :template "~A , ")) lexprs)
 	(multiple-value-bind (ctr? returned?) (contrap lexprs trc)
        (format t 
 		(cond 
 		  (returned? "} is undeterminable~%~%")
-		  (ctr?  "} is contradiction~%~%" )
+		  (ctr?  
+			(format 
+			  nil 
+			  "} is contradiction~%{~{~A ~^, ~}} |= ~A~%~%" 
+			  (mapcar (lambda (x) (dump:dump-lexpr x :strm nil :template "~A")) old) 
+			  (dump:dump-lexpr lexpr :strm nil :template "~A")))
 		  (t "} is satisfiable~%~%"))) (values ctr? returned?)))
 
 
@@ -372,7 +377,7 @@
 (defun semantic-conseq (lexprs lexpr &optional (trc nil) (ishow t))
 	(let ((target `(,@lexprs (,+NEG+ ,lexpr))))
       (if ishow 
-		(multiple-value-bind (ctr? returned?) (check-contrap target trc)
+		(multiple-value-bind (ctr? returned?) (check-contrap target lexprs lexpr trc)
 		  (if returned? -1 ctr?))
         (multiple-value-bind (ctr? returned?) (contrap target trc)
 		  (if returned? -1 ctr?)))))

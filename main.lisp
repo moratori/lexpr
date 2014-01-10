@@ -52,7 +52,7 @@
 (defun main ()
   (format t "~%Input set of wff { ~%")
   (force-output t)
-  ;(ignore-errors 
+  (ignore-errors 
 	
 	(let ((in (input))
 		  (conseq (parser:expr->in% (read-one "conseq ?"))))
@@ -69,7 +69,7 @@
 			  `(,@in (,+NEG+ ,conseq))
 			  (read-one "input filename: ")))))
 	
-	;) 
+	) 
   (main))
 
 (credit)

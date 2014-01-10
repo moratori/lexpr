@@ -352,6 +352,8 @@
 
 	(multiple-value-bind 
 		(clean-lexprs init-free-value) (util:preproc lexprs)
+
+
 		(when (and (not discheck)  strm)
 		  (first-write lexprs strm))
 		(values

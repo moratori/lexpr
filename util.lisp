@@ -123,8 +123,11 @@
 
 ;;; 量化子つけるな
 ;;; 2n回の否定をとる かならず先頭は否定の式じゃないとだめ
+;;; (,+NEG+ (,+NEG+ (,+OR+ (,+NEG+ (P |x|)) (,+NEG+ (Q |x|)))))
 (defun rid-even-neg (lexpr)
 	(cond 
+	    ;; もぐれば 先頭が否定でない式はいくらでもででくるんだ!...
+		((not (eq +NEG+ (car lexpr))) lexpr)
 		((symbolp (second lexpr)) lexpr)	
 		((not (eq +NEG+ (car (second lexpr)))) lexpr)
 		(t (rid-even-neg (second (second lexpr))))))
@@ -330,7 +333,11 @@
 
 ;;; 論理式を綺麗にする
 (defun regular-1 (lexpr)	
-	(rid-qneg (rid-dn (rid-demorgan (rid-eq-impl (rid-qneg lexpr))))))
+	(rid-qneg 
+	  (rid-dn 
+		(rid-demorgan 
+		  (rid-eq-impl 
+				(rid-qneg lexpr))))))
 
 
 ;;; reqular-1だけでは綺麗にならないので
@@ -338,6 +345,8 @@
 ;;; 論理式の構造的にどの除去則をやった後にこれをやれば
 ;;; 必ず綺麗になるみたいなのないのかな
 (defun regular (lexpr)
+  ;(print lexpr)
+  ;(print "here")
 	(let ((clean (regular-1 lexpr)))
 		(if (equal lexpr clean)
 			lexpr

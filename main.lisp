@@ -56,7 +56,7 @@
 	
 	(let ((in (input))
 		  (conseq (parser:expr->in% (read-one "conseq ?"))))
-	  	
+
 		(format t "inputted: ")
 		(dump:dump-lexpr conseq)
 		(format t "processing...~%")
@@ -65,9 +65,14 @@
 				(infer:semantic-conseq in conseq)))
 
 		  (when (and (typep r 'boolean) r (y-or-n-p "output to TeX? "))
-			(infer:lexprs->tex   
-			  `(,@in (,+NEG+ ,conseq))
-			  (read-one "input filename: ")))))
+		
+			(let ((nm (read-one "input filename: ")))
+			  (format t "writing...~%")
+			  (infer:lexprs->tex   
+			  	`(,@in (,+NEG+ ,conseq)) nm)
+			  (format t "done!~%")
+			  )
+			)))
 	
 	) 
   (main))

@@ -3,14 +3,26 @@ lexpr
 
 タブロー法で述語論理の式集合に対して充足可能性を判定します  
 
-ホーン節に限るとか、述語論理の表現力を落とせば、もっとうまく行くかも
+タブロー木をTeXに出力できます
 
-タブロー木をTeXに出力したりできます
+![tableau-tree-sample1](tree.png)
 
-![tableau-tree-sample](tree.png)
+![tableau-tree-sample2](arith.png)
 
 
-※ style-warning がたくさん出るのは仕様です(
+実装上の都合により、自由変数と定数の区別がないので
+
+(量化子のスコープにある自由変数は普通に束縛される)
+
+例えばP(x)はxを個体定数として引数を1つとる述語と認識されます.
+
+なので綺麗ではないですが、命題論理の範囲の式の恒真性のチェックもできます
+
+[Wikipediaの例](http://ja.wikipedia.org/wiki/DPLL%E3%82%A2%E3%83%AB%E3%82%B4%E3%83%AA%E3%82%BA%E3%83%A0#.E5.85.85.E8.B6.B3.E4.B8.8D.E8.83.BD.E3.81.AA.E8.AB.96.E7.90.86.E5.BC.8F)
+
+![tableau-tree-sample3](prop.png)
+
+
 
 Usage
 =====

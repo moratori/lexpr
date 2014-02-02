@@ -5,8 +5,10 @@ lexpr
 
 タブロー木をTeXに出力できます
 
+例1
 ![tableau-tree-sample1](tree.png)
 
+例2
 ![tableau-tree-sample2](arith.png)
 
 
